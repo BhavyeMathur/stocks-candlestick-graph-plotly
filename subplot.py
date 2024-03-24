@@ -27,7 +27,9 @@ df_1_day.reset_index(inplace=True)
 df_1_min.rename(columns={'Datetime': 'Date'}, inplace=True)
 df_5_min.rename(columns={'Datetime': 'Date'}, inplace=True)
 df_15_min.rename(columns={'Datetime': 'Date'}, inplace=True)
-df.rename(columns={'index': 'Date'}, inplace=True)
+df.rename(columns={'Datetime': 'Date'}, inplace=True)
+
+print(df.head())
 
 df_1_min['Date'] = df_1_min['Date'].astype(str).str.slice(0, 19)
 df_1_min['Date'] = pd.to_datetime(df_1_min['Date'])
