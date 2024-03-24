@@ -5,21 +5,17 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import yfinance as yf
 
-today = str(datetime.datetime.now().date())
-svn_days_ago = str((datetime.datetime.now() - datetime.timedelta(days=7)).date())
-sixty_days_ago = str((datetime.datetime.now() - datetime.timedelta(days=59)).date())
-ten_years_ago = str((datetime.datetime.now() - datetime.timedelta(days=3650)).date())
+today = datetime.datetime.now()
+svn_days_ago = today - datetime.timedelta(days=7)
+sixty_days_ago = today - datetime.timedelta(days=59)
+ten_years_ago = today - datetime.timedelta(days=3650)
 
-symbol = 'FB'
+symbol = 'AAPL'
 
 df_1_min = yf.download(symbol, start = svn_days_ago, end = today, interval = '1m')
-
 df_5_min = yf.download(symbol, start = sixty_days_ago, end = today, interval = '5m')
-
 df_15_min = yf.download(symbol, start = sixty_days_ago, end = today, interval = '15m')
-
 df = yf.download(symbol, start = sixty_days_ago, end = today, interval = '1h')
-
 df_1_day = yf.download(symbol, start = ten_years_ago, end = today ,interval = '1d')
 
 
