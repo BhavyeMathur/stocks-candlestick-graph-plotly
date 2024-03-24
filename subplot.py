@@ -6,51 +6,20 @@ import plotly.graph_objects as go
 import yfinance as yf
 
 today = datetime.datetime.now()
-svn_days_ago = today - datetime.timedelta(days=7)
-sixty_days_ago = today - datetime.timedelta(days=59)
-ten_years_ago = today - datetime.timedelta(days=3650)
 
-symbol = 'AAPL'
 
-df_1_min = yf.download(symbol, start=svn_days_ago, end=today, interval='1m')
-df_5_min = yf.download(symbol, start=sixty_days_ago, end=today, interval='5m')
-df_15_min = yf.download(symbol, start=sixty_days_ago, end=today, interval='15m')
-df = yf.download(symbol, start=sixty_days_ago, end=today, interval='1h')
-df_1_day = yf.download(symbol, start=ten_years_ago, end=today, interval='1d')
+def download_data(symbol, days, interval):
+    df = yf.download(symbol, start=today - datetime.timedelta(days=days), end=today, interval=interval)
+    missing = pd.date_range(start=df.index[0], end=df.index[-1], freq=interval).difference(df.index)
+    return df, missing
 
-df_1_min.reset_index(inplace=True)
-df_5_min.reset_index(inplace=True)
-df_15_min.reset_index(inplace=True)
-df.reset_index(inplace=True)
-df_1_day.reset_index(inplace=True)
 
-df_1_min.rename(columns={'Datetime': 'Date'}, inplace=True)
-df_5_min.rename(columns={'Datetime': 'Date'}, inplace=True)
-df_15_min.rename(columns={'Datetime': 'Date'}, inplace=True)
-df.rename(columns={'Datetime': 'Date'}, inplace=True)
-
-print(df.head())
-
-df_1_min['Date'] = df_1_min['Date'].astype(str).str.slice(0, 19)
-df_1_min['Date'] = pd.to_datetime(df_1_min['Date'])
-df_5_min['Date'] = df_5_min['Date'].astype(str).str.slice(0, 19)
-df_5_min['Date'] = pd.to_datetime(df_5_min['Date'])
-df_15_min['Date'] = df_15_min['Date'].astype(str).str.slice(0, 19)
-df_15_min['Date'] = pd.to_datetime(df_15_min['Date'])
-df['Date'] = df['Date'].astype(str).str.slice(0, 19)
-df['Date'] = pd.to_datetime(df['Date'])
-df_1_day['Date'] = pd.to_datetime(df_1_day['Date'])
-
-missing_dates = pd.date_range(start=df_1_day['Date'].iloc[0], end=df_1_day['Date'].iloc[-1]).difference(
-    df_1_day.Date).strftime("%Y-%m-%d").tolist()
-missing_1_min = pd.date_range(start=df_1_min['Date'].iloc[0], end=df_1_min['Date'].iloc[-1], freq='T').difference(
-    df_1_min.Date).strftime("%Y-%m-%d %H:%M:%S").tolist()
-missing_5_min = pd.date_range(start=df_5_min['Date'].iloc[0], end=df_5_min['Date'].iloc[-1], freq='5T').difference(
-    df_5_min.Date).strftime("%Y-%m-%d %H:%M:%S").tolist()
-missing_15_min = pd.date_range(start=df_15_min['Date'].iloc[0], end=df_15_min['Date'].iloc[-1], freq='15T').difference(
-    df_15_min.Date).strftime("%Y-%m-%d %H:%M:%S").tolist()
-missing_1_hr = pd.date_range(start=df['Date'].iloc[0], end=df['Date'].iloc[-1], freq='1H').difference(df.Date).strftime(
-    "%Y-%m-%d %H:%M:%S").tolist()
+stock = 'AAPL'
+df_1_min, missing_1_min = download_data(stock, days=7, interval="1m")
+df_5_min, missing_5_min = download_data(stock, days=60, interval="5m")
+df_15_min, missing_15_min = download_data(stock, days=60, interval="15m")
+df_1_hrs, missing_1_hrs = download_data(stock, days=60, interval="1h")
+df_1_day, missing_1_day = download_data(stock, days=365, interval="1d")
 
 pd.options.mode.chained_assignment = None
 
@@ -111,9 +80,9 @@ def get_annotations(data):
     return annotation
 
 
-df.ta.sma(close='Close', length=20, append=True)
-df.ta.sma(close='Close', length=50, append=True)
-df['vwap'] = (df['Volume'] * (df['High'] + df['Low']) / 2).cumsum() / df['Volume'].cumsum()
+df_1_hrs.ta.sma(close='Close', length=20, append=True)
+df_1_hrs.ta.sma(close='Close', length=50, append=True)
+df_1_hrs['vwap'] = (df_1_hrs['Volume'] * (df_1_hrs['High'] + df_1_hrs['Low']) / 2).cumsum() / df_1_hrs['Volume'].cumsum()
 
 df_1_min.ta.sma(close='Close', length=50, append=True)
 df_1_min.ta.sma(close='Close', length=200, append=True)
@@ -135,7 +104,7 @@ df_1_day.ta.sma(close='Close', length=200, append=True)
 df_1_day['vwap'] = (df_1_day['Volume'] * (df_1_day['High'] + df_1_day['Low']) / 2).cumsum() / df_1_day[
     'Volume'].cumsum()
 
-frames = [df, df_1_min, df_5_min, df_15_min, df_1_day]
+frames = [df_1_hrs, df_1_min, df_5_min, df_15_min, df_1_day]
 labels = ['Hourly', '1 Min', '5 Min', '15 Min', 'Daily']
 
 fig = make_subplots(
@@ -179,7 +148,7 @@ for i, frame in zip([2, 4, 5, 6, 7], frames):
     yaxis = 'y' + str(i)
     fig.add_trace(
         go.Candlestick(
-            x=frame['Date'],
+            x=frame.index,
             open=frame['Open'],
             high=frame['High'],
             low=frame['Low'],
@@ -202,7 +171,7 @@ for i, frame in zip([3, 12, 13, 14, 15], frames):
     yaxis = 'y' + str(i)
     fig.add_trace(
         go.Scatter(
-            x=frame['Date'],
+            x=frame.index,
             y=frame['Volume'],
             # mode="line",
             showlegend=False,
@@ -222,7 +191,7 @@ for i, frame in zip([2, 4, 5, 6, 7], frames):
         visibility = False
     fig.add_trace(
         go.Scatter(
-            x=frame['Date'],
+            x=frame.index,
             y=frame['SMA_50'],
             line=dict(color='rgb(95,104,192)', width=1),
             name='SMA_50',
@@ -240,7 +209,7 @@ for i, frame in zip([2, 4, 5, 6, 7], frames):
         sma = 'SMA_200'
     fig.add_trace(
         go.Scatter(
-            x=frame['Date'],
+            x=frame.index,
             y=frame[sma],
             line=dict(color='rgb(71,77,125)', width=1),
             name=sma,
@@ -305,7 +274,7 @@ updatemenus = [{
 
 fig.update_layout(
     title=dict(
-        text=symbol + " PRICE CHART",
+        text=stock + " PRICE CHART",
         x=0.5,
         font=dict(size=24)
     ),
@@ -314,8 +283,8 @@ fig.update_layout(
     font_family='Monospace',
     font_color='rgb(236,242,253)',
     updatemenus=updatemenus,
-    shapes=get_shapes(df),
-    annotations=get_annotations(df)
+    shapes=get_shapes(df_1_hrs),
+    annotations=get_annotations(df_1_hrs)
 )
 
 for i in [1, 8, 9, 10, 11]:
@@ -352,7 +321,7 @@ for i in [2, 4, 5, 6, 7]:
     })
 
 for i, dates, interval in zip([3, 12, 13, 14, 15],
-                              [missing_1_hr, missing_1_min, missing_5_min, missing_15_min, missing_dates],
+                              [missing_1_hrs, missing_1_min, missing_5_min, missing_15_min, missing_1_day],
                               [3600000, 600000, 300000, 900000, 86400000]):
     fig.update_layout({
         'xaxis' + str(i): {
